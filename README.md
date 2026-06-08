@@ -2,116 +2,240 @@
 
 ## Project Overview
 
-Inventory replenishment is a common problem in retail operations. Ordering too little inventory can lead to stockouts and lost sales, while ordering too much inventory increases holding costs and ties up capital.
+Inventory replenishment is a common operational challenge in retail businesses. Ordering too little inventory can result in stockouts and lost sales, while ordering too much inventory increases holding costs and ties up capital.
 
-The objective of this project is to train a reinforcement learning agent that learns how much inventory to order each day. The learned policy is compared against a simple rule-based replenishment strategy to determine whether reinforcement learning can improve operational performance.
+The objective of this project is to train a reinforcement learning agent that learns how much inventory to order each day. The learned policy is compared against a simple rule-based replenishment strategy to determine whether reinforcement learning can improve business performance.
+
+Rather than focusing on model complexity, this project focuses on problem formulation, reward design, evaluation, and understanding the risks of deploying reinforcement learning in a business setting.
+
+---
 
 ## Business Problem
 
-Imagine a small retailer that needs to decide how much inventory to reorder every day. Demand changes from day to day and future demand is uncertain. The retailer wants to maximize profit while keeping enough inventory available to satisfy customers.
+Imagine a small retailer that must decide how much inventory to reorder every day.
 
-This problem is naturally sequential because today's ordering decision affects inventory availability and costs in future periods.
+Customer demand changes from day to day and future demand is uncertain. The retailer wants to maximize profit while ensuring products remain available for customers.
 
-## Environment Design
+This is a sequential decision-making problem because today's ordering decision affects future inventory levels, future costs, and future sales opportunities.
 
-The simulator models a simplified retail inventory system. Inventory arrives after a fixed lead time, customer demand is generated randomly, and the retailer earns revenue from sales while incurring inventory-related costs.
+---
+
+# MDP Formulation
+
+## State
 
 The agent observes three pieces of information before making a decision:
 
-* Current inventory level (low, medium, or high)
-* Recent demand level
-* Whether there is already an order in transit
+- Current inventory level (low, medium, or high)
+- Recent demand level
+- Whether there is already an order in transit
 
-At each decision point, the agent can choose one of four ordering quantities: 0, 10, 25, or 50 units.
+The state representation is intentionally simple to allow the use of tabular Q-learning.
 
-The reward function is designed to encourage profitable behavior while discouraging stockouts and excessive inventory. Revenue from sales contributes positively to reward, while purchasing costs, holding costs, ordering costs, and stockout penalties reduce it.
+---
 
-## Baseline Policy
+## Actions
+
+At each decision point, the agent can choose one of four ordering quantities:
+
+| Action | Order Quantity |
+|----------|----------|
+| 0 | 0 units |
+| 1 | 10 units |
+| 2 | 25 units |
+| 3 | 50 units |
+
+---
+
+## Reward Function
+
+The reward function is designed to balance profitability and operational efficiency.
+
+Positive reward:
+
+- Revenue generated from sales
+
+Negative reward:
+
+- Inventory purchasing costs
+- Inventory holding costs
+- Ordering costs
+- Stockout penalties
+
+The goal is to encourage the agent to maintain enough inventory to satisfy demand while avoiding excessive inventory costs.
+
+---
+
+## Transition Dynamics
+
+Each simulated day follows the process below:
+
+1. Existing inventory orders may arrive.
+2. Customer demand is generated.
+3. Sales occur based on available inventory.
+4. Lost sales are recorded if demand exceeds inventory.
+5. Inventory levels are updated.
+6. The agent chooses a replenishment action.
+7. The environment transitions to the next state.
+
+---
+
+## Horizon
+
+- One episode represents 60 business days.
+- The agent is trained for 3,000 episodes.
+- Final evaluation is performed over 200 episodes.
+
+---
+
+# Baseline Policy
 
 To provide a meaningful benchmark, a simple rule-based inventory policy was implemented.
 
 The baseline follows a common business heuristic:
 
-* Order 50 units when inventory is low
-* Order 25 units when inventory is moderate
-* Do not order when inventory is high
+- Order 50 units when inventory is low
+- Order 25 units when inventory is moderate
+- Do not order when inventory is high
 
-Although simple, this type of policy is frequently used in practice and provides a useful benchmark for evaluating the RL agent.
+Although simple, this policy reflects the type of replenishment rule often used in practice and serves as a useful benchmark for evaluating the RL agent.
 
-## Reinforcement Learning Approach
+---
+
+# Reinforcement Learning Approach
 
 The learning agent uses tabular Q-Learning with epsilon-greedy exploration.
 
-The agent interacts with the environment repeatedly over 3,000 training episodes and gradually learns action values for different inventory situations. Exploration is reduced over time so that the agent increasingly relies on learned experience rather than random actions.
+Training settings:
 
-## Results
+- Learning rate (α): 0.1
+- Discount factor (γ): 0.95
+- Initial epsilon: 1.0
+- Minimum epsilon: 0.05
+- Epsilon decay: 0.995
+
+The agent interacts with the environment repeatedly and gradually learns which actions generate the highest long-term reward in different inventory situations.
+
+---
+
+# Evaluation Results
 
 The final evaluation compared the learned policy with the rule-based baseline.
 
-| Policy     | Average Reward | Average Stockout Days |
-| ---------- | -------------- | --------------------- |
-| Baseline   | 6906.31        | 0.23                  |
-| Q-Learning | 3871.65        | 33.73                 |
+| Policy | Average Reward | Average Stockout Days | Average Inventory |
+|----------|----------|----------|----------|
+| Baseline | 6906.31 | 0.23 | 46.65 |
+| Q-Learning | 3871.65 | 33.73 | 2.69 |
 
-Contrary to expectations, the Q-Learning agent performed significantly worse than the baseline policy. The learned policy maintained very low inventory levels and experienced frequent stockouts, which greatly reduced overall profitability.
+Contrary to expectations, the Q-Learning agent performed significantly worse than the baseline policy.
 
-## Discussion
+While the RL agent successfully learned a policy from experience, it consistently maintained very low inventory levels, which led to frequent stockouts and reduced profitability.
+
+---
+
+# Generated Outputs
+
+The project automatically generates the following files:
+
+- outputs/training_rewards.csv
+- outputs/evaluation_results.csv
+- outputs/reward_curve.png
+- outputs/performance_comparison.png
+- outputs/inventory_comparison.png
+- outputs/stockout_comparison.png
+
+---
+
+# Policy Behavior Analysis
+
+The visualizations provide insight into why the Q-learning agent underperformed.
+
+The training reward curve shows that the agent never converged to a clearly stable policy. Although rewards improved during some portions of training, performance remained highly variable throughout the 3,000 episodes.
+
+The average reward comparison confirms that the baseline policy generated substantially higher rewards than the learned policy.
+
+The inventory comparison reveals an important behavioral difference. The baseline policy maintained an average inventory level of approximately 46.65 units, while the Q-learning agent maintained only 2.69 units on average. This suggests that the learned policy became overly focused on reducing inventory costs.
+
+The stockout comparison explains the poor financial performance of the RL agent. By keeping inventory levels too low, the agent experienced an average of 33.73 stockout days per episode, compared with only 0.23 stockout days for the baseline policy.
+
+Taken together, the results suggest that the learned policy developed an overly aggressive inventory reduction strategy. While inventory costs decreased, service levels deteriorated significantly, leading to lower overall profitability.
+
+---
+
+# Discussion
 
 One of the most interesting findings from this project is that reinforcement learning did not automatically outperform a simple business rule.
 
-The poor performance appears to be driven by limitations in the state representation and the simplified nature of the simulator. Important factors such as seasonality, demand trends, promotions, and supplier uncertainty were not included in the state space.
+The poor performance appears to be driven by limitations in the state representation and the simplified nature of the simulator. Important factors such as seasonality, demand trends, supplier reliability, promotions, and external market conditions were not included in the state space.
 
 As a result, the agent often underestimated future inventory needs and allowed inventory levels to become critically low.
 
-This outcome highlights an important lesson in reinforcement learning: algorithm choice is often less important than state design, reward design, and environment quality.
+This outcome highlights an important lesson in reinforcement learning: the quality of the state representation, reward function, and environment design can be more important than the learning algorithm itself.
 
-## Edge Case Analysis
+---
+
+# Edge Case Analysis
 
 In addition to comparing average performance, it is useful to consider how the policies behave under more challenging situations.
 
-When demand spikes unexpectedly, the baseline policy tends to recover inventory levels quickly because it places large replenishment orders whenever inventory becomes low. The Q-learning agent, however, often reacts too slowly and experiences extended periods of stockouts.
+When demand spikes unexpectedly, the baseline policy tends to recover inventory levels quickly because it places large replenishment orders whenever inventory becomes low.
 
-When inventory levels start at very low values, the baseline policy again responds aggressively by replenishing inventory immediately. The learned policy frequently delays ordering decisions, which increases the risk of lost sales.
+The Q-learning agent, however, often reacts too slowly and experiences extended periods of stockouts.
 
-These observations suggest that the baseline policy is more robust under stressful operating conditions, while the RL agent remains sensitive to inventory shortages and demand variability.
+Similarly, when inventory starts at very low levels, the baseline policy replenishes aggressively, while the learned policy frequently delays ordering decisions.
 
+These observations suggest that the baseline policy is more robust under stressful operating conditions, whereas the RL agent remains sensitive to inventory shortages and demand variability.
 
-## Risks and Limitations
+---
 
-Several risks were identified during the project.
-
-First, the agent may learn behaviors that optimize the mathematical reward without aligning with broader business objectives. Second, the simulator does not fully capture real-world retail demand patterns. Finally, the learned policy may be overfitted to the simulated environment and may not generalize to actual operations.
-
-These limitations make direct deployment risky.
-
-## Failure Analysis
+# Failure Analysis
 
 One of the most important lessons from this project is understanding why the RL agent performed poorly despite being trained for thousands of episodes.
 
-### Reward Hacking
+## Reward Hacking
 
-Although the agent was designed to maximize long-term reward, the reward function may not perfectly represent business objectives. The agent appeared to learn a strategy that kept inventory levels extremely low in order to avoid purchasing and holding costs. While this behavior may occasionally improve short-term rewards, it resulted in frequent stockouts and lost sales. This demonstrates how an agent can optimize the reward function without actually achieving the desired business outcome.
+The agent appeared to learn a strategy that minimized inventory and holding costs. While this occasionally improved short-term rewards, it resulted in frequent stockouts and lost sales.
 
-### Unsafe Behavior
+This demonstrates how an RL agent can optimize the mathematical reward function without achieving the desired business outcome.
 
-The learned policy would be considered unsafe in a real retail environment. During evaluation, the agent experienced an average of more than 33 stockout days per episode, compared with almost zero stockouts for the baseline policy. Such behavior would likely reduce customer satisfaction, damage brand reputation, and result in lost revenue.
+## Unsafe Behavior
 
-### Instability
+The learned policy would be considered unsafe in a real retail environment.
 
-Training results were highly variable across episodes. Even after thousands of training episodes, reward values fluctuated significantly rather than converging toward a stable policy. This suggests that the agent struggled to learn a consistent inventory strategy under the current state representation and environment design.
+An average of more than 33 stockout days per episode would lead to poor customer experience, reduced revenue, and potential reputational damage.
 
-### Overfitting
+## Instability
 
-The agent was trained entirely within a simplified simulator. As a result, there is a risk that the learned policy is overfitted to the specific demand patterns generated by the simulation. Even if performance were improved within the simulator, there would be no guarantee that the same policy would perform well under real-world demand conditions.
+Training rewards remained highly variable throughout training.
 
-### Key Takeaway
+The reward curve suggests that the agent struggled to converge to a stable replenishment strategy under the current state representation.
 
-The poor performance of the RL agent highlights an important challenge in reinforcement learning applications. Success depends not only on the learning algorithm itself, but also on the quality of the state representation, reward function, and simulation environment. In this project, these design choices had a larger impact on performance than the choice of Q-learning as the learning method.
+## Overfitting
 
-## Recommendation
+The agent was trained entirely within a simplified simulation environment.
 
-Based on the evaluation results, the current Q-Learning agent should not be deployed in production.
+Even if performance improved inside the simulator, there is no guarantee that the learned policy would generalize to real-world retail demand patterns.
 
-A more appropriate next step would be to run the model in shadow mode, where it generates recommendations while human managers continue making the final inventory decisions.
+## Governance Risk
 
-Future work should focus on improving the state representation, incorporating demand forecasting signals, and testing the agent under more realistic business conditions.
+Automated inventory decisions directly affect revenue and customer satisfaction.
+
+Without appropriate monitoring and human oversight, a poorly behaving RL policy could create significant operational and financial risk.
+
+---
+
+# Recommendation
+
+Based on the evaluation results, the current Q-Learning agent should not be deployed directly into production.
+
+A more appropriate next step would be to run the model in shadow mode, where it generates replenishment recommendations while inventory managers continue making the final decisions.
+
+Future work should focus on:
+
+- Improving the state representation
+- Incorporating demand forecasting information
+- Redesigning the reward function
+- Testing more realistic demand scenarios
+- Comparing against stronger RL approaches such as DQN or PPO
+
+Overall, this project demonstrates the reinforcement learning workflow successfully, but the current policy is not yet strong enough to replace a simple inventory management rule. Additional development and validation would be required before considering real-world deployment.
