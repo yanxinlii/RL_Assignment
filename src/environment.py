@@ -12,9 +12,9 @@ class InventoryEnvironment:
 
         self.unit_cost = 10
 
-        self.holding_cost = 0.5
+        self.holding_cost = 0.2
 
-        self.stockout_penalty = 5
+        self.stockout_penalty = 25
 
         self.order_cost = 20
 
@@ -38,12 +38,16 @@ class InventoryEnvironment:
 
     def _get_state(self):
 
-        if self.inventory < 20:
+        if self.inventory < 10:
             inventory_bucket = 0
-        elif self.inventory < 50:
+        elif self.inventory < 25:
             inventory_bucket = 1
-        else:
+        elif self.inventory < 50:
             inventory_bucket = 2
+        elif self.inventory < 75:
+            inventory_bucket = 3
+        else:
+            inventory_bucket = 4
 
         demand_bucket = self.current_demand_level
 
@@ -124,7 +128,7 @@ class InventoryEnvironment:
 
         revenue = sales * self.selling_price
 
-        purchase_cost = order_quantity * self.unit_cost
+        purchase_cost = arrived_inventory * self.unit_cost
 
         holding_cost = (
             self.inventory *
